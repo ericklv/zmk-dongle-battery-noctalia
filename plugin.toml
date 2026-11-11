@@ -1,0 +1,28 @@
+id = "eleve/zmk_dongle_stats"
+name = "ZMK Dongle Stats"
+version = "0.2.0"
+plugin_api = 42
+author = "eleve"
+license = "AGPL-3.0-or-later"
+icon = "keyboard"
+description = "Battery of each split half, read from the ZMK dongle over USB"
+tags = ["keyboard", "battery", "zmk"]
+dependencies = ["python3"]
+
+[[widget]]
+id = "bar"
+entry = "widget.luau"
+
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+width = 380
+height = "content"
+max_height = 420
+placement = "attached"
+position = "auto"
+open_near_click = true
+
+[[service]]
+id = "reader"
+entry = "service.luau"

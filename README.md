@@ -1,10 +1,10 @@
-# ZMK Dongle Battery for Dux Shell
+# ZMK Dongle Battery for Noctalia
 
-DankBar widget that shows the battery level of each half of a ZMK split keyboard driven by a USB dongle. It reads the levels from the dongle over ZMK Studio RPC, so it works without a Bluetooth link between the host and the keyboard.
+Noctalia bar widget that shows the battery level of each half of a ZMK split keyboard driven by a USB dongle. It reads the levels from the dongle over ZMK Studio RPC, so it works without a Bluetooth link between the host and the keyboard.
 
-The bar shows `L 87% R 92%`. Clicking it opens a popout with the outline of each half and its level. A half at 20% or lower turns red.
+The bar shows `L 87% R 92%`. Clicking it opens a panel with the outline of each half and its level. A half at 20% or lower turns red.
 
-![Popout and bar pill](assets/screenshot.png)
+![Panel and bar widget](assets/screenshot.png)
 
 ## How it works
 
@@ -12,7 +12,15 @@ The bar shows `L 87% R 92%`. Clicking it opens a popout with the outline of each
 - It finds the `zmk__battery_history` custom subsystem and sends `get_history`.
 - Each half answers through the dongle with `BatteryHistoryNotification` messages. The script keeps the newest entry per source.
 - The dongle sometimes drops relayed entries. The script repeats the request, up to 5 times by default, until every expected half has answered.
-- Output is one JSON line on stdout. The widget runs the script every 10 minutes, when the popout opens and from the refresh button.
+- Output is one JSON line on stdout.
+
+The plugin has three entries:
+
+| Entry | File | Role |
+| --- | --- | --- |
+| `reader` service | `service.luau` | Runs the script every 10 minutes, when the panel opens and from the refresh button, and publishes the result to the plugin state. |
+| `bar` widget | `widget.luau` | Shows the levels in the bar and toggles the panel on click. |
+| `panel` panel | `panel.luau` | Device chips, refresh button and the outline of each half. |
 
 Levels are the latest entry each half recorded, not a live reading. How often the halves record depends on `CONFIG_ZMK_BATTERY_HISTORY_INTERVAL_MINUTES` and `CONFIG_ZMK_BATTERY_HISTORY_LEVEL_THRESHOLD`.
 
@@ -34,18 +42,27 @@ Levels are the latest entry each half recorded, not a live reading. How often th
 
 ### Host
 
-- Dux Shell with plugin support.
+- Noctalia 5.4 or newer (plugin API 42).
 - Python 3.10 or newer as `python3`. The script uses only the standard library and encodes the few Studio messages it needs by hand.
 - Read and write access to `/dev/ttyACM*`. On Arch this means membership in the `uucp` group.
 
 ## Installation
 
+Clone the repository into Noctalia's local plugin directory:
+
 ```sh
-git clone https://github.com/ericklv/zmk-dongle-battery-dux-shell \
-  ~/.config/DankMaterialShell/plugins/zmkDongleStats
+git clone https://github.com/ericklv/zmk-dongle-battery-noctalia \
+  ~/.local/share/noctalia/plugins/zmk_dongle_stats
+noctalia msg plugins enable eleve/zmk_dongle_stats
 ```
 
-Then enable **ZMK Dongle Stats** in the plugin settings and add it to the bar.
+Then add **ZMK Dongle Stats** to a bar from the widget picker, or by hand with `type = "eleve/zmk_dongle_stats:bar"`.
+
+Force a read from the shell:
+
+```sh
+noctalia msg plugin eleve/zmk_dongle_stats:reader all refresh
+```
 
 ## Command line
 
@@ -69,11 +86,11 @@ The exit code is `0` on success and `1` on error. Errors are reported in the `er
 
 ## Multiple keyboards
 
-The script tries every ZMK port and uses the first one that exposes battery history. When more than one is connected, the popout shows a chip for each USB product name. The selected name is stored in the plugin data and passed as `--device`.
+The script tries every ZMK port and uses the first one that exposes battery history. When more than one is connected, the panel shows a chip for each USB product name. The selected name is stored in `device.txt` inside the plugin data directory (`~/.local/state/noctalia/plugins/data/eleve/zmk_dongle_stats/`) and passed as `--device`.
 
 ## Outlines
 
-The popout outline is chosen by matching the USB product name, lowercased and stripped of non-alphanumeric characters, against these keys:
+The panel outline is chosen by matching the USB product name, lowercased and stripped of non-alphanumeric characters, against these keys:
 
 | Key | Traced from |
 | --- | --- |
@@ -82,7 +99,7 @@ The popout outline is chosen by matching the USB product name, lowercased and st
 | `totem` | TOTEM case |
 | `lily58` | Lily58 case |
 
-Unknown names fall back to `corne`. Every outline is tilted 5 degrees and stored as fractions of the half's width in `ZmkDongleStatsWidget.qml`. The level is drawn at the center of the largest circle that fits inside each outline.
+Unknown names fall back to `corne`. Every outline is tilted 5 degrees and stored as fractions of the half's width in `shapes.luau`. Noctalia plugins have no canvas, so the panel writes each outline as an SVG, colored from the active palette, to the `svg/` folder of the plugin data directory. The level is drawn at the center of the largest circle that fits inside each outline.
 
 ## Limitations
 
